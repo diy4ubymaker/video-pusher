@@ -1,0 +1,52 @@
+// Video Pusher internals.  Render: dot -Tpng -Gdpi=150 pusher.dot -o ../images/architecture-pusher.png
+digraph pusher {
+    rankdir=TB; nodesep=0.4; ranksep=0.5; pad=0.3; newrank=true; compound=true;
+    fontname="Helvetica"; node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#64748B", penwidth=1.2];
+    edge [fontname="Helvetica", fontsize=10, color="#475569", penwidth=1.2];
+
+    subgraph cluster_gui {
+        label=<<b>GUI thread</b> (Tkinter)>; labeljust=l; style="rounded,filled"; fillcolor="#EFF6FF"; color="#3B82F6";
+        panels [label="Panels\nSource · Output · Encoding · Overlays"];
+        persist [label="Settings JSON\n(no passphrases / keys)", shape=cylinder, fillcolor="#F8FAFC"];
+        apply [label="Apply to\nlive stream", fillcolor="#FEF3C7", color="#D97706"];
+        poll [label="Event poller (100 ms)\nstatus · stats · log\n(secrets masked)"];
+        panels -> persist [dir=both, arrowsize=0.7];
+    }
+
+    evq [label="Event queue\nlog · status · stats · done", shape=box, style="filled", fillcolor="#F1F5F9"];
+
+    subgraph cluster_worker {
+        label=<<b>PlaylistWorker thread</b>>; labeljust=l; style="rounded,filled"; fillcolor="#F5F3FF"; color="#8B5CF6";
+        watch [label="Folder watcher\nsize/mtime every 1 s"];
+        look  [label="Look-ahead checker\nffprobe + 2 s test decode"];
+        slate [label="Test signal\nbars & tone / black"];
+        loop  [label=<<b>Play loop</b><br/>next item · continuous timeline<br/>reconnect · daily restart>, fillcolor="#EDE9FE"];
+        live  [label="Overlay updater\n(built-in ZeroMQ client)", fillcolor="#FEF3C7", color="#D97706"];
+        watch -> look -> loop;
+        slate -> loop;
+    }
+
+    subgraph cluster_ff {
+        label=<<b>FFmpeg processes</b>>; labeljust=l; style="rounded,filled"; fillcolor="#ECFEFF"; color="#06B6D4";
+        feed [label=<<b>Feeder FFmpeg</b> — one per file<br/><font point-size="10">-re · copy or H.264/AAC · scale / deinterlace<br/>date/time · logo · zmq · -output_ts_offset</font>>, fillcolor="#CFFAFE"];
+        queue [label="Listen mode (SRT/RTMP):\ndrop-oldest queue + writer thread", style="rounded,filled,dashed", fillcolor="#FFFFFF"];
+        outp [label=<<b>Output FFmpeg</b> — one per connection<br/><font point-size="10">-c copy · MPEG-TS / FLV<br/>SRT · RIST · RTMP · UDP options</font>>, fillcolor="#CFFAFE"];
+        feed -> outp [label="  MPEG-TS pipe (push)", penwidth=2, color="#0891B2"];
+        feed -> queue [style=dashed, label=" listen"];
+        queue -> outp [style=dashed];
+    }
+
+    net [label="Network", shape=ellipse, style="filled", fillcolor="#FEF9C3", color="#CA8A04"];
+
+    panels -> loop [label="  Start: settings"];
+    apply -> live [label="  new overlays"];
+    loop -> feed [label="  start / stop"];
+    loop -> outp [label="  start / restart"];
+    live -> feed [label="  commands on 127.0.0.1", color="#D97706", fontcolor="#B45309"];
+    outp -> net [penwidth=2.5, color="#2563EB"];
+    outp -> evq [label="  log · stats ·\n  receiver connected", style=dotted];
+    loop -> evq [label="  status: Playing 2/4:\n  file (0:40)", style=dotted];
+    evq -> poll [style=dotted];
+
+    {rank=same; panels; apply; poll}
+}

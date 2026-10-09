@@ -1,0 +1,32 @@
+# FFmpeg binaries (download separately - see bin/README.md)
+bin/*
+!bin/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Test / media output
+*.ts
+*.mp4
+*.mov
+*.mkv
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Old working copies (not part of the project)
+main_v[1-9].py
+main_v1[01].py
+receiver_v[1-7].py

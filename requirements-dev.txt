@@ -1,0 +1,5 @@
+-r requirements.txt
+# Running the app needs only the Python standard library (with Tkinter).
+# These are for building the standalone executable and running the tests.
+pyinstaller>=6.0
+pytest>=7.0

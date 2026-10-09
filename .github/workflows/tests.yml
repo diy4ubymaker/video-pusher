@@ -1,0 +1,24 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install FFmpeg and a virtual display
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg xvfb
+      - name: Install test tools
+        run: pip install pytest
+      - name: Run tests (window tests run under xvfb)
+        run: xvfb-run -a python -m pytest -v

@@ -1,0 +1,12 @@
+# Video Pusher and Video Receiver - runtime requirements
+#
+# Both apps use only the Python standard library (Python 3.9+, including Tkinter),
+# so there are no packages to install from PyPI. This file is intentionally empty of
+# dependencies; `pip install -r requirements.txt` succeeds and installs nothing.
+#
+# External (non-Python) requirements - see README.md and bin/README.md:
+#   - ffmpeg and ffprobe (and ffplay for Video Receiver's playback) in the bin/ folder;
+#     a "full" FFmpeg build (libsrt, librist, libx264, freetype, libzmq) is recommended
+#   - Tkinter: included with python.org installers; on Debian/Ubuntu: sudo apt install python3-tk
+#
+# For building the executables and running the tests, use requirements-dev.txt.

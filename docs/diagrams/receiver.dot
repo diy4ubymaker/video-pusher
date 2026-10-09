@@ -1,0 +1,50 @@
+// Video Receiver internals.  Render: dot -Tpng -Gdpi=150 receiver.dot -o ../images/architecture-receiver.png
+digraph receiver {
+    rankdir=TB; nodesep=0.4; ranksep=0.5; pad=0.3; newrank=true; compound=true;
+    fontname="Helvetica"; node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#64748B", penwidth=1.2];
+    edge [fontname="Helvetica", fontsize=10, color="#475569", penwidth=1.2];
+
+    subgraph cluster_gui {
+        label=<<b>GUI thread</b> (Tkinter)>; labeljust=l; style="rounded,filled"; fillcolor="#ECFDF5"; color="#10B981";
+        form [label="Protocol · Listen/Pull · address\nsecurity · action · output · multicast"];
+        persist [label="Settings JSON\n(no passphrases / keys)", shape=cylinder, fillcolor="#F8FAFC"];
+        poll [label="Event poller\nstatus · stats · log"];
+        form -> persist [dir=both, arrowsize=0.7];
+    }
+
+    evq [label="Event queue", style="filled", fillcolor="#F1F5F9"];
+
+    subgraph cluster_worker {
+        label=<<b>ReceiverWorker thread</b>>; labeljust=l; style="rounded,filled"; fillcolor="#F5F3FF"; color="#8B5CF6";
+        session [label=<<b>Session loop</b><br/>start processes for the action<br/>listen / pull again · new file per connection>, fillcolor="#EDE9FE"];
+        reader [label="Output reader\n'Input #0' → connected · stats → progress\nwrong RTMP key → reject"];
+        dog [label="Watchdog\nno progress for N s → close session", fillcolor="#FEE2E2", color="#DC2626"];
+        reader -> dog [label="  progress"];
+    }
+
+    net [label="Network\nSRT · RTMP · RIST · UDP", shape=ellipse, style="filled", fillcolor="#FEF9C3", color="#CA8A04"];
+
+    subgraph cluster_procs {
+        label=<<b>Processes for the chosen action</b>>; labeljust=l; style="rounded,filled"; fillcolor="#ECFEFF"; color="#06B6D4";
+        ffplay1 [label="ffplay (direct)\nLive Playback Only — SRT · RTMP", fillcolor="#CFFAFE"];
+        ffmpeg [label=<<b>FFmpeg</b><br/><font point-size="10">passphrase · key · timeouts<br/>UDP buffer / NIC / source</font>>, fillcolor="#CFFAFE"];
+        file [label="Recording\n.ts / fragmented .mp4", shape=cylinder, fillcolor="#FFFFFF"];
+        mc [label="Multicast relay\n1316-byte packets", fillcolor="#FFFFFF"];
+        bridge [label="Local bridge\n127.0.0.1:29999", shape=parallelogram, fillcolor="#FFFFFF"];
+        ffplay2 [label="ffplay\nplay + save / relay,\nRIST · UDP playback", fillcolor="#CFFAFE"];
+        ffmpeg -> file; ffmpeg -> mc; ffmpeg -> bridge -> ffplay2;
+    }
+
+    form -> session [label="  Start"];
+    poll -> evq [dir=back, style=dotted];
+    evq -> session [dir=back, style=dotted];
+    evq -> reader [dir=back, style=dotted];
+    session -> ffplay1 [label="  start"];
+    session -> ffmpeg [label="  start"];
+    reader -> ffmpeg [dir=back, style=dotted, label="  stdout / stderr"];
+    reader -> ffplay1 [dir=back, style=dotted];
+    dog -> ffmpeg [label="  stop silent\n  session", color="#DC2626", fontcolor="#B91C1C"];
+    net -> ffplay1 [penwidth=2.5, color="#059669"];
+    net -> ffmpeg [penwidth=2.5, color="#059669"];
+    {rank=same; form; poll}
+}
